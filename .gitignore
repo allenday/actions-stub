@@ -1,0 +1,10 @@
+.env
+build/
+cmake-build-*/
+local/
+*.log
+
+# Local Gas City coordination state.
+.agents/
+.beads/
+plans/

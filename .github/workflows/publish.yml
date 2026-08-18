@@ -1,0 +1,46 @@
+name: publish
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_NAME: ghcr.io/allenday/actions-stub
+
+jobs:
+  publish-app-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build app image
+        run: docker build --tag "$IMAGE_NAME:${{ github.sha }}" .
+
+      - name: Tag main image
+        if: github.ref == 'refs/heads/main'
+        run: docker tag "$IMAGE_NAME:${{ github.sha }}" "$IMAGE_NAME:latest"
+
+      - name: Tag version image
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: docker tag "$IMAGE_NAME:${{ github.sha }}" "$IMAGE_NAME:${{ github.ref_name }}"
+
+      - name: Push commit image
+        run: docker push "$IMAGE_NAME:${{ github.sha }}"
+
+      - name: Push latest image
+        if: github.ref == 'refs/heads/main'
+        run: docker push "$IMAGE_NAME:latest"
+
+      - name: Push version image
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: docker push "$IMAGE_NAME:${{ github.ref_name }}"
