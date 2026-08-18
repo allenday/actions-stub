@@ -1,0 +1,87 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${APP_IMAGE:-actions-stub:local}
+    environment:
+      APP_NAME: ${APP_NAME:-actions-stub}
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8080
+      APP_CONFIG_DIR: /config
+      ACTIONS_STUB_MOUNT_DIRS: /config:/inspect/nginx-config:/inspect/nginx-content:/inspect/mariadb-config:/inspect/mariadb-data
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      - type: bind
+        source: ${APP_CONFIG_DIR:?copy .env.example to .env first}
+        target: /config
+      - type: bind
+        source: ${NGINX_CONFIG_DIR:?copy .env.example to .env first}
+        target: /inspect/nginx-config
+        read_only: true
+      - type: bind
+        source: ${NGINX_CONTENT_DIR:?copy .env.example to .env first}
+        target: /inspect/nginx-content
+        read_only: true
+      - type: bind
+        source: ${MARIADB_CONFIG_DIR:?copy .env.example to .env first}
+        target: /inspect/mariadb-config
+        read_only: true
+      - type: bind
+        source: ${MARIADB_DATA_DIR:?copy .env.example to .env first}
+        target: /inspect/mariadb-data
+        read_only: true
+    healthcheck:
+      test: ["CMD", "actions-stub", "healthcheck", "http://127.0.0.1:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  nginx:
+    image: ${NGINX_IMAGE:-nginx:1.27.5-alpine}
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "${NGINX_HTTP_PORT:-8088}:80"
+    volumes:
+      - type: bind
+        source: ${NGINX_CONFIG_DIR:?copy .env.example to .env first}
+        target: /etc/nginx/conf.d
+        read_only: true
+      - type: bind
+        source: ${NGINX_CONTENT_DIR:?copy .env.example to .env first}
+        target: /usr/share/nginx/html
+        read_only: true
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/health | grep -q '^ok'"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  mariadb:
+    image: ${MARIADB_IMAGE:-mariadb:11.4.5}
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?set in .env}
+      MARIADB_DATABASE: ${MARIADB_DATABASE:-actions_stub}
+      MARIADB_USER: ${MARIADB_USER:-actions_stub}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:?set in .env}
+    ports:
+      - "${MARIADB_PORT:-3306}:3306"
+    volumes:
+      - type: bind
+        source: ${MARIADB_CONFIG_DIR:?copy .env.example to .env first}
+        target: /etc/mysql/conf.d
+        read_only: true
+      - type: bind
+        source: ${MARIADB_DATA_DIR:?copy .env.example to .env first}
+        target: /var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -p$${MARIADB_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s

@@ -1,0 +1,11 @@
+.git
+.github
+.agents
+.beads
+build
+cmake-build-*
+dist
+local
+plans
+.env
+*.log
