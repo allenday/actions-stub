@@ -76,7 +76,8 @@ ghcr.io/allenday/actions-stub
 
 The publish workflow uses `GITHUB_TOKEN` with `contents: read` and
 `packages: write`, then runs ordinary `docker build`, `docker tag`, and
-`docker push`. It does not use buildx.
+`docker push`. It does not use buildx. GHCR pushes use bounded retry/backoff so
+transient secondary rate limits fail only after repeated push failures.
 
 GitHub notes that container packages published from a workflow with
 `GITHUB_TOKEN` are linked to the workflow repository automatically, while new
@@ -109,6 +110,7 @@ without Docker when CMake is installed.
 ## Baseline Exception
 
 This repository was empty when the project started. An empty root commit was
-pushed to `main` only to give GitHub a base branch for this draft PR. All
-substantive source, workflow, and documentation changes live on the feature
-branch.
+pushed to `main` only to give GitHub a base branch for the initial service PR
+(#1). The service, Compose demo, workflow, and documentation files were then
+introduced through that review branch before normal `main`-based follow-up
+work began.
